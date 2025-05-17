@@ -1,40 +1,78 @@
-import { useEffect, useState } from "react";
-import type { Schema } from "../amplify/data/resource";
+import { useState, useEffect } from "react";
+import {
+  Button,
+  Heading,
+  Flex,
+  View,
+  Grid,
+  Divider,
+} from "@aws-amplify/ui-react";
+import { useAuthenticator } from "@aws-amplify/ui-react";
+import { Amplify } from "aws-amplify";
+import "@aws-amplify/ui-react/styles.css";
 import { generateClient } from "aws-amplify/data";
+import outputs from "../amplify_outputs.json";
+/**
+ * @type {import('aws-amplify/data').Client<import('../amplify/data/resource').Schema>}
+ */
 
-const client = generateClient<Schema>();
+Amplify.configure(outputs);
+const client = generateClient({
+  authMode: "userPool",
+});
 
-function App() {
-  const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
+export default function App() {
+  const [userprofiles, setUserProfiles] = useState([]);
+  const { signOut } = useAuthenticator((context) => [context.user]);
 
   useEffect(() => {
-    client.models.Todo.observeQuery().subscribe({
-      next: (data) => setTodos([...data.items]),
-    });
+    fetchUserProfile();
   }, []);
 
-  function createTodo() {
-    client.models.Todo.create({ content: window.prompt("Todo content") });
+  async function fetchUserProfile() {
+    const { data: profiles } = await client.models.UserProfile.list();
+    setUserProfiles(profiles);
   }
 
   return (
-    <main>
-      <h1>My todos</h1>
-      <button onClick={createTodo}>+ new</button>
-      <ul>
-        {todos.map((todo) => (
-          <li key={todo.id}>{todo.content}</li>
+    <Flex
+      className="App"
+      justifyContent="center"
+      alignItems="center"
+      direction="column"
+      width="70%"
+      margin="0 auto"
+    >
+      <Heading level={1}>My Profile</Heading>
+
+      <Divider />
+
+      <Grid
+        margin="3rem 0"
+        autoFlow="column"
+        justifyContent="center"
+        gap="2rem"
+        alignContent="center"
+      >
+        {userprofiles.map((userprofile) => (
+          <Flex
+            key={userprofile.id || userprofile.email}
+            direction="column"
+            justifyContent="center"
+            alignItems="center"
+            gap="2rem"
+            border="1px solid #ccc"
+            padding="2rem"
+            borderRadius="5%"
+            className="box"
+          >
+            <View>
+              <Heading level="3">{userprofile.email}</Heading>
+            </View>
+          </Flex>
         ))}
-      </ul>
-      <div>
-        🥳 App successfully hosted. Try creating a new todo.
-        <br />
-        <a href="https://docs.amplify.aws/react/start/quickstart/#make-frontend-updates">
-          Review next step of this tutorial.
-        </a>
-      </div>
-    </main>
+      </Grid>
+      <Button onClick={signOut}>Sign Out</Button>
+    </Flex>
   );
 }
-
-export default App;
